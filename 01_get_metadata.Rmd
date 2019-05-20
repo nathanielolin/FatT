@@ -53,6 +53,8 @@ dat <- dat %>%
     "Autumn in Hieron", "COUNTER/Weight", 
     "Marielda", "Winter in Hieron", 
     "Twilight Mirage", "Spring in Hieron"))
+
+dat %>% count(season)
 ```
 
 ## Code episode numbers
@@ -61,6 +63,7 @@ dat <- dat %>%
 dat <- dat %>%
   mutate(episode_number = as.numeric(str_replace_all(
     episode_name, "^(.*? )([0-9-]*):.*", "\\2")))
+
 dat$episode_number[str_detect(dat$episode_name, "Autumn in Hieron: Holiday Special")] <- NA
 ```
 

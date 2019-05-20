@@ -1,7 +1,7 @@
 Get FatT transcript metadata
 ================
 Nathaniel Olin
-Mon May 20 17:55:58 2019
+Mon May 20 18:03:54 2019
 
 ``` r
 library(tidyverse)
@@ -96,7 +96,19 @@ dat <- dat %>%
     "Autumn in Hieron", "COUNTER/Weight", 
     "Marielda", "Winter in Hieron", 
     "Twilight Mirage", "Spring in Hieron"))
+
+dat %>% count(season)
 ```
+
+    ## # A tibble: 6 x 2
+    ##   season               n
+    ##   <chr>            <int>
+    ## 1 Autumn in Hieron    22
+    ## 2 COUNTER/Weight      28
+    ## 3 Marielda            12
+    ## 4 Spring in Hieron    28
+    ## 5 Twilight Mirage     41
+    ## 6 Winter in Hieron    21
 
 Code episode numbers
 --------------------
@@ -105,6 +117,7 @@ Code episode numbers
 dat <- dat %>%
   mutate(episode_number = as.numeric(str_replace_all(
     episode_name, "^(.*? )([0-9-]*):.*", "\\2")))
+
 dat$episode_number[str_detect(dat$episode_name, "Autumn in Hieron: Holiday Special")] <- NA
 ```
 
