@@ -1,0 +1,62 @@
+---
+title: "Clean transcripts"
+author: "Nathaniel Olin"
+date: "`r date()`"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup}
+library(tidyverse)
+```
+
+# Load data
+
+## Metadata
+
+```{r load-meta}
+dat <- read_csv("meta.csv")
+# Remove locked transcript
+dat <- dat %>%
+  filter(filename != "2.0_06_heres_your_bribe_tip.txt")
+```
+
+## Transcripts
+
+```{r load-transcripts, warning = F}
+dat <- dat %>%
+  mutate(raw_text = sapply(
+    file.path("transcripts", filename), 
+    readLines, encoding = "UTF-8"))
+
+dat %>%
+  filter(season_number == 4 & episode_number == 1) %>%
+  select(raw_text) %>%
+  unlist() %>%
+  .[100:120] %>%
+  paste(collapse = "\n") %>%
+  writeLines()
+```
+
+# Clean transcripts
+
+```{r}
+dat <- dat %>%
+  mutate(text = lapply(
+    raw_text, function(x){
+      tibble(speaker = str_replace_all(x, ":.*$", ""),
+             text = str_replace_all(x, "^.*?: ", "")) %>%
+        filter(! (speaker == "" & text == "")) %>%
+        filter(! (speaker == " " & text == " ")) %>%
+        filter(! str_detect(speaker, "^\\[")) %>%
+        mutate(speaker = str_replace_all(speaker, " .*", ""))
+    }))
+```
+
+```{r}
+test <- bind_rows(dat$text, .id = "filename")
+test %>% count(speaker, sort = T) %>%
+  print(n = 30)
+```
+
