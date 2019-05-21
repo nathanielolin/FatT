@@ -3,6 +3,8 @@ title: "Get FatT transcript metadata"
 author: "Nathaniel Olin"
 date: "`r date()`"
 output: github_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup}
@@ -35,13 +37,6 @@ dat <- dat %>%
 dat
 ```
 
-## Create episode id
-
-```{r}
-dat <- dat %>%
-  mutate(id = openssl::md5(url))
-```
-
 # Code additional metadata
 
 ## Code season names
@@ -64,6 +59,21 @@ dat <- dat %>%
 dat %>% count(season)
 ```
 
+## Code season numbers
+
+```{r}
+dat <- dat %>%
+  mutate(season_number = recode(
+    season,
+    "Autumn in Hieron" = 1,
+    "COUNTER/Weight" = 2,
+    "Marielda" = 2.5,
+    "Winter in Hieron" = 3,
+    "Twilight Mirage" = 4,
+    "Spring in Hieron" = 5))
+```
+
+
 ## Code episode numbers
 
 ```{r ep-nums}
@@ -82,11 +92,24 @@ dat <- dat %>%
     episode_name, "^(.*? )([0-9-]*): (.*)", "\\3"))
 ```
 
+## Code filename (for later)
+
+```{r}
+dat <- dat %>%
+  mutate(filename = sprintf(
+    "%02.1f_%02.0f_%s.txt", 
+    season_number, 
+    episode_number, 
+    str_replace_all(
+      tolower(episode_name), 
+      pattern = c(" " = "_", "[:!?'(),.]" = ""))))
+```
+
 # Write out
 
 ```{r write}
 dat %>%
-  select(season, episode_number, episode_name, minutes, url) %>%
+  select(filename, season_number, season, episode_number, episode_name, minutes, url) %>%
   print() %>%
   write_csv("meta.csv")
 ```
