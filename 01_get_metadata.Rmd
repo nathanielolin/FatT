@@ -35,6 +35,13 @@ dat <- dat %>%
 dat
 ```
 
+## Create episode id
+
+```{r}
+dat <- dat %>%
+  mutate(id = openssl::md5(url))
+```
+
 # Code additional metadata
 
 ## Code season names

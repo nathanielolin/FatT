@@ -1,20 +1,30 @@
 Get FatT transcript metadata
 ================
 Nathaniel Olin
-Mon May 20 18:03:54 2019
+Mon May 20 20:32:46 2019
 
 ``` r
 library(tidyverse)
 ```
 
-    ## -- Attaching packages --------------------------------------------------------------------------------------------------------------- tidyverse 1.2.1 --
+    ## Registered S3 methods overwritten by 'ggplot2':
+    ##   method         from 
+    ##   [.quosures     rlang
+    ##   c.quosures     rlang
+    ##   print.quosures rlang
 
-    ## v ggplot2 3.1.0       v purrr   0.3.2  
-    ## v tibble  2.1.1       v dplyr   0.8.0.1
-    ## v tidyr   0.8.3       v stringr 1.4.0  
-    ## v readr   1.3.1       v forcats 0.4.0
+    ## Registered S3 method overwritten by 'rvest':
+    ##   method            from
+    ##   read_xml.response xml2
 
-    ## -- Conflicts ------------------------------------------------------------------------------------------------------------------ tidyverse_conflicts() --
+    ## -- Attaching packages ------------------------------------------------------------------------- tidyverse 1.2.1 --
+
+    ## v ggplot2 3.1.0     v purrr   0.3.2
+    ## v tibble  2.1.1     v dplyr   0.7.8
+    ## v tidyr   0.8.2     v stringr 1.4.0
+    ## v readr   1.3.1     v forcats 0.3.0
+
+    ## -- Conflicts ---------------------------------------------------------------------------- tidyverse_conflicts() --
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
@@ -23,6 +33,10 @@ library(googledrive)
 library(googlesheets4)
 sheets_auth(email = Sys.getenv("email"))
 ```
+
+    ## Registered S3 method overwritten by 'openssl':
+    ##   method      from
+    ##   print.bytes Rcpp
 
 Get list of episodes
 ====================
@@ -75,6 +89,14 @@ dat
     ##  9 Autumn in Hieron 09: I'm Not Ha~      87 https://drive.google.com/open?~
     ## 10 Autumn in Hieron 10: Chekhov's ~      56 https://drive.google.com/open?~
     ## # ... with 170 more rows
+
+Create episode id
+-----------------
+
+``` r
+dat <- dat %>%
+  mutate(id = openssl::md5(url))
+```
 
 Code additional metadata
 ========================
