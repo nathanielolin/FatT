@@ -45,12 +45,12 @@ dat %>%
 dat <- dat %>%
   mutate(text = lapply(
     raw_text, function(x){
-      tibble(speaker = str_replace_all(x, ":.*$", ""),
-             text = str_replace_all(x, "^.*?: ", "")) %>%
-        filter(! (speaker == "" & text == "")) %>%
-        filter(! (speaker == " " & text == " ")) %>%
-        filter(! str_detect(speaker, "^\\[")) %>%
-        mutate(speaker = str_replace_all(speaker, " .*", ""))
+      tibble(line = 1:length(x),
+             speaker = toupper(str_replace_all(x, "^[ *()]*(.*?)[,: ].*", "\\1")),
+             text = str_replace_all(x, "^.*?: ", ""),
+             raw = x) %>%
+        filter(! (speaker %in% c("", " ") & text %in% c("", " "))) %>%
+        filter(! str_detect(speaker, "^ *\\["))
     }))
 ```
 
