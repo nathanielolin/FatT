@@ -2,7 +2,13 @@
 
 This project scrapes and analyzes the transcripts of Friends at the Table, an actual-play podcast. Transcripts were created by [Transcripts At The Table](https://twitter.com/transcript_fatt?lang=en), a fan-organized, official, paid project. 
 
-# Resources
+## How to navigate this repository
+
+* To go straight to the analysis, click [here]().
+* The numbered `.md` (Markdown) files are notebooks of the project code and output.
+* The original code for the project is found in the numbered `.Rmd` (RMarkdown) files.
+
+## Resources
 
 * Friends at the Table can be found [here](http://friendsatthetable.net/).
 * You can subscribe to the podcast by adding [this](http://friendsatthetable.libsyn.com/rss) RSS link to your podcast app of choice. 
