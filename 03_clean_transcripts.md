@@ -1,7 +1,7 @@
 Clean transcripts
 ================
 Nathaniel Olin
-Sun May 26 11:31:43 2019
+Sun May 26 11:55:21 2019
 
 ``` r
 library(tidyverse)
@@ -107,7 +107,7 @@ Split text into groups:
 3.  New punctuation or space and all following characters
 
 ``` r
-split_pattern <- "(^[ *().]*)(.+?)([!?,: /\\[\\]().;—-].*)"
+split_pattern <- "^[ *().]*(.+?)[!?,: /\\[\\]().;—-]+(.*)"
 ```
 
 Turn raw text vector into dataframe with speaker, text, and raw (original text) columns
@@ -117,8 +117,8 @@ dat <- dat %>%
   mutate(text = lapply(
     raw_text, function(x){
       tibble(line = 1:length(x),
-             speaker = toupper(str_replace_all(x, split_pattern, "\\2")),
-             text = str_replace_all(x, split_pattern, "\\3"),
+             speaker = toupper(str_replace_all(x, split_pattern, "\\1")),
+             text = str_replace_all(x, split_pattern, "\\2"),
              raw = x) %>%
         filter(! (speaker %in% c("", " ") & text %in% c("", " "))) %>%
         filter(! str_detect(speaker, "^ *\\[")) %>%
@@ -259,6 +259,7 @@ speaker_recode <- list(
     "JORAS",
     "KARAS",
     "SMOLDER",
+    "SUNDER",
     "SHO",
     "AMAYA",
     # Hitchcock's friend = snitch nightly
@@ -456,20 +457,20 @@ dat_line %>%
     ## [445] "SITTING"        "SKEIN"          "SNICKERING"     "SNORT"         
     ## [449] "SNOW"           "SO…"            "SO…LIKE…OKAY"   "SOFT"          
     ## [453] "SOL"            "SOMETIME"       "SPACE"          "START"         
-    ## [457] "STEP"           "STORMS"         "SUCH"           "SUNDER"        
-    ## [461] "SYNOPSIS"       "TEASES"         "TECH"           "TECHNICALLY"   
-    ## [465] "TELL"           "TEMPORARY"      "THAN"           "THANK"         
-    ## [469] "THAT’S…"        "THAT…ADELAIDE"  "THEIRS"         "THEY'LL"       
-    ## [473] "THIRD"          "THIS…"          "THOSE"          "UGH"           
-    ## [477] "UH…702"         "UH…ALL"         "UH…AND"         "UH…WHO’S"      
-    ## [481] "UHH"            "UHHUH"          "UM…"            "UNBRAKED"      
-    ## [485] "UNDERSTAND"     "UNLESS"         "UNTIL"          "UP"            
-    ## [489] "URM"            "VELAS"          "VISCOUS"        "VISIONS"       
-    ## [493] "WALK"           "WANT"           "WAS"            "WATCHED"       
-    ## [497] "WATCHING"       "WE'LL"          "WE’VE"          "WELL"          
-    ## [501] "WHILE"          "WHOOPS"         "WHY"            "WILL"          
-    ## [505] "WITHOUT"        "WOOP"           "WREATHE"        "Y’ALL"         
-    ## [509] "YOU’VE"         "ZEBRAS"
+    ## [457] "STEP"           "STORMS"         "SUCH"           "SYNOPSIS"      
+    ## [461] "TEASES"         "TECH"           "TECHNICALLY"    "TELL"          
+    ## [465] "TEMPORARY"      "THAN"           "THANK"          "THAT’S…"       
+    ## [469] "THAT…ADELAIDE"  "THEIRS"         "THEY'LL"        "THIRD"         
+    ## [473] "THIS…"          "THOSE"          "UGH"            "UH…702"        
+    ## [477] "UH…ALL"         "UH…AND"         "UH…WHO’S"       "UHH"           
+    ## [481] "UHHUH"          "UM…"            "UNBRAKED"       "UNDERSTAND"    
+    ## [485] "UNLESS"         "UNTIL"          "UP"             "URM"           
+    ## [489] "VELAS"          "VISCOUS"        "VISIONS"        "WALK"          
+    ## [493] "WANT"           "WAS"            "WATCHED"        "WATCHING"      
+    ## [497] "WE'LL"          "WE’VE"          "WELL"           "WHILE"         
+    ## [501] "WHOOPS"         "WHY"            "WILL"           "WITHOUT"       
+    ## [505] "WOOP"           "WREATHE"        "Y’ALL"          "YOU’VE"        
+    ## [509] "ZEBRAS"
 
 Remaining lines coded as speaker above
 
@@ -481,7 +482,7 @@ for(i in seq_along(dat_line$speaker)){
     # You're a carryover from the line above, and
     dat_line$speaker[i] <- dat_line$speaker[i - 1]
     # Your text should stay as written
-    dat_line$text <- dat_line$raw
+    dat_line$text[i] <- dat_line$raw[i]
   }
 }
 
@@ -515,14 +516,14 @@ dat_line %>%
     ## # A tibble: 176,560 x 5
     ##    filename            line speaker text                raw                
     ##    <chr>              <int> <chr>   <chr>               <chr>              
-    ##  1 transcripts/1.0_0~     1 <NA>    <U+FEFF>Autumn in Hieron ~  <U+FEFF>Autumn in Hieron ~ 
-    ##  2 transcripts/1.0_0~     4 TRANSC~ Transcribers: Etha~ Transcribers: Etha~
-    ##  3 transcripts/1.0_0~     9 KEITH   "KEITH: [cross] Ye~ "KEITH: [cross] Ye~
-    ##  4 transcripts/1.0_0~    12 ALI     "ALI: [cross] Yeah~ "ALI: [cross] Yeah~
-    ##  5 transcripts/1.0_0~    15 NICK    "NICK: [cross] Oka~ "NICK: [cross] Oka~
-    ##  6 transcripts/1.0_0~    18 KEITH   "KEITH: Everybody—~ "KEITH: Everybody—~
-    ##  7 transcripts/1.0_0~    21 AUSTIN  AUSTIN: Whoa, whoa~ AUSTIN: Whoa, whoa~
-    ##  8 transcripts/1.0_0~    24 KEITH   KEITH: Tell me whe~ KEITH: Tell me whe~
-    ##  9 transcripts/1.0_0~    27 AUSTIN  AUSTIN: Okay, I'm ~ AUSTIN: Okay, I'm ~
-    ## 10 transcripts/1.0_0~    30 JACK    "JACK: I'm ready. " "JACK: I'm ready. "
+    ##  1 transcripts/1.0_0~     1 <NA>    in Hieron 00: We'r~ <U+FEFF>Autumn in Hieron ~ 
+    ##  2 transcripts/1.0_0~     4 TRANSC~ Ethan (identity un~ Transcribers: Etha~
+    ##  3 transcripts/1.0_0~     9 KEITH   "cross] Yeah, we'r~ "KEITH: [cross] Ye~
+    ##  4 transcripts/1.0_0~    12 ALI     "cross] Yeah. "     "ALI: [cross] Yeah~
+    ##  5 transcripts/1.0_0~    15 NICK    "cross] Okay, yeah~ "NICK: [cross] Oka~
+    ##  6 transcripts/1.0_0~    18 KEITH   "Everybody— "       "KEITH: Everybody—~
+    ##  7 transcripts/1.0_0~    21 AUSTIN  Whoa, whoa, whoa.   AUSTIN: Whoa, whoa~
+    ##  8 transcripts/1.0_0~    24 KEITH   Tell me when— Tell~ KEITH: Tell me whe~
+    ##  9 transcripts/1.0_0~    27 AUSTIN  Okay, I'm ready.    AUSTIN: Okay, I'm ~
+    ## 10 transcripts/1.0_0~    30 JACK    "I'm ready. "       "JACK: I'm ready. "
     ## # ... with 176,550 more rows

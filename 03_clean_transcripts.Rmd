@@ -50,7 +50,7 @@ Split text into groups:
 1. New punctuation or space and all following characters
 
 ```{r}
-split_pattern <- "(^[ *().]*)(.+?)([!?,: /\\[\\]().;—-].*)"
+split_pattern <- "^[ *().]*(.+?)[!?,: /\\[\\]().;—-]+(.*)"
 ```
 
 Turn raw text vector into dataframe with speaker, text, and raw (original text) columns
@@ -60,8 +60,8 @@ dat <- dat %>%
   mutate(text = lapply(
     raw_text, function(x){
       tibble(line = 1:length(x),
-             speaker = toupper(str_replace_all(x, split_pattern, "\\2")),
-             text = str_replace_all(x, split_pattern, "\\3"),
+             speaker = toupper(str_replace_all(x, split_pattern, "\\1")),
+             text = str_replace_all(x, split_pattern, "\\2"),
              raw = x) %>%
         filter(! (speaker %in% c("", " ") & text %in% c("", " "))) %>%
         filter(! str_detect(speaker, "^ *\\[")) %>%
@@ -201,6 +201,7 @@ speaker_recode <- list(
     "JORAS",
     "KARAS",
     "SMOLDER",
+    "SUNDER",
     "SHO",
     "AMAYA",
     # Hitchcock's friend = snitch nightly
@@ -294,7 +295,7 @@ for(i in seq_along(dat_line$speaker)){
     # You're a carryover from the line above, and
     dat_line$speaker[i] <- dat_line$speaker[i - 1]
     # Your text should stay as written
-    dat_line$text <- dat_line$raw
+    dat_line$text[i] <- dat_line$raw[i]
   }
 }
 
