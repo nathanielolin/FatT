@@ -1,7 +1,7 @@
 Clean transcripts
 ================
 Nathaniel Olin
-Sun May 26 14:21:43 2019
+Sun May 26 14:44:30 2019
 
 ``` r
 library(tidyverse)
@@ -138,7 +138,7 @@ dat_line <- bind_rows(dat$text, .id = "filename") %>%
   filter(! str_detect(raw, "^ *$"))
 ```
 
-Remove "as ...): " pattern which indicates who the speaker is impersonating (the leading paren is removed by the regex above)
+Remove "...): " pattern which indicates who the speaker is impersonating (the leading paren is removed by the regex above)
 
 ``` r
 dat_line <- dat_line %>%
@@ -147,7 +147,7 @@ dat_line <- dat_line %>%
     #   str_detect(text, "^as .*\\): "),
     #   str_replace_all(text, "(^as )(.*?)( |\\):)(.*)", "\\2"),
     #   as.character(NA)),
-    text = str_replace_all(text, "^as .*\\): ", ""))
+    text = str_replace_all(text, "^.*[):]+ *", ""))
 ```
 
 Real speakers
@@ -526,16 +526,16 @@ dat_line %>%
 ```
 
     ## # A tibble: 176,560 x 5
-    ##    filename            line speaker text                raw                
-    ##    <chr>              <int> <chr>   <chr>               <chr>              
-    ##  1 transcripts/1.0_0~     1 <NA>    in Hieron 00: We'r~ <U+FEFF>Autumn in Hieron ~ 
-    ##  2 transcripts/1.0_0~     4 TRANSC~ Ethan (identity un~ Transcribers: Etha~
-    ##  3 transcripts/1.0_0~     9 KEITH   "cross] Yeah, we'r~ "KEITH: [cross] Ye~
-    ##  4 transcripts/1.0_0~    12 ALI     "cross] Yeah. "     "ALI: [cross] Yeah~
-    ##  5 transcripts/1.0_0~    15 NICK    "cross] Okay, yeah~ "NICK: [cross] Oka~
-    ##  6 transcripts/1.0_0~    18 KEITH   "Everybody— "       "KEITH: Everybody—~
-    ##  7 transcripts/1.0_0~    21 AUSTIN  Whoa, whoa, whoa.   AUSTIN: Whoa, whoa~
-    ##  8 transcripts/1.0_0~    24 KEITH   Tell me when— Tell~ KEITH: Tell me whe~
-    ##  9 transcripts/1.0_0~    27 AUSTIN  Okay, I'm ready.    AUSTIN: Okay, I'm ~
-    ## 10 transcripts/1.0_0~    30 JACK    "I'm ready. "       "JACK: I'm ready. "
+    ##    filename            line speaker  text              raw                 
+    ##    <chr>              <int> <chr>    <chr>             <chr>               
+    ##  1 transcripts/1.0_0~     1 <NA>     We're Not Callin~ <U+FEFF>Autumn in Hieron 0~ 
+    ##  2 transcripts/1.0_0~     4 TRANSCR~ ""                Transcribers: Ethan~
+    ##  3 transcripts/1.0_0~     9 KEITH    "cross] Yeah, we~ "KEITH: [cross] Yea~
+    ##  4 transcripts/1.0_0~    12 ALI      "cross] Yeah. "   "ALI: [cross] Yeah.~
+    ##  5 transcripts/1.0_0~    15 NICK     "cross] Okay, ye~ "NICK: [cross] Okay~
+    ##  6 transcripts/1.0_0~    18 KEITH    "Everybody— "     "KEITH: Everybody— "
+    ##  7 transcripts/1.0_0~    21 AUSTIN   Whoa, whoa, whoa. AUSTIN: Whoa, whoa,~
+    ##  8 transcripts/1.0_0~    24 KEITH    Tell me when— Te~ KEITH: Tell me when~
+    ##  9 transcripts/1.0_0~    27 AUSTIN   Okay, I'm ready.  AUSTIN: Okay, I'm r~
+    ## 10 transcripts/1.0_0~    30 JACK     "I'm ready. "     "JACK: I'm ready. " 
     ## # ... with 176,550 more rows
