@@ -1,0 +1,272 @@
+---
+title: "Friends at the Table Transcript Analysis"
+author: "Nathaniel Olin"
+date: "`r date()`"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = F}
+library(tidyverse)
+library(tidytext)
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+dat <- read_csv("line.csv") %>%
+  filter(!is.na(speaker) & speaker != "TRANSCRIBER") %>%
+  filter(! filename %in% c(
+    "transcripts/2.0_37_visions_from_windows_or_the_last_time_the_bomb_dropped.txt",
+    "transcripts/4.0_63_guaranteed_events_or_an_accounting_of_the_time_when_we_built_the_machine.txt"
+  ))
+meta <- read_csv("meta.csv") %>%
+  mutate(filename = file.path("transcripts", filename))
+dat <- left_join(meta, dat, by = "filename")
+```
+
+<!-- ```{r} -->
+<!-- dat %>% -->
+<!--   count(speaker) %>% -->
+<!--   arrange(n) %>% -->
+<!--   mutate(speaker = fct_inorder(speaker)) %>% -->
+<!--   ggplot(aes(x = n, y = speaker)) + -->
+<!--   geom_point() + -->
+<!--   expand_limits(x = 0) + -->
+<!--   scale_x_continuous( -->
+<!--     expand = expand_scale(c(0, 0.05)), -->
+<!--     labels = scales::comma) + -->
+<!--   theme_bw() + -->
+<!--   labs(x = "Total Lines", y = "Speaker", title = "Total lines spoken") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- dat %>% -->
+<!--   group_by(speaker) %>% -->
+<!--   summarize(line_rate = n() / length(unique(filename))) %>% -->
+<!--   arrange(line_rate) %>% -->
+<!--   ungroup() %>% -->
+<!--   mutate(speaker = fct_inorder(speaker)) %>% -->
+<!--   ggplot(aes(x = line_rate, y = speaker)) + -->
+<!--   geom_point() + -->
+<!--   expand_limits(x = 0) + -->
+<!--   scale_x_continuous( -->
+<!--     expand = expand_scale(c(0, 0.05)), -->
+<!--     labels = scales::comma) + -->
+<!--   theme_bw() + -->
+<!--   labs(x = "Lines per episode", y = "Speaker",  -->
+<!--        title = "Lines spoken per episode appearing") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- dat %>% -->
+<!--   group_by(filename, speaker) %>% -->
+<!--   summarize(line_speaker_ep = n()) %>% -->
+<!--   group_by(filename) %>% -->
+<!--   mutate(line_share = line_speaker_ep / sum(line_speaker_ep)) %>% -->
+<!--   ungroup() %>% -->
+<!--   arrange(line_share) %>% -->
+<!--   mutate(speaker = fct_inorder(speaker)) %>% -->
+<!--   ggplot(aes(x = line_share, y = speaker)) + -->
+<!--   geom_jitter() + -->
+<!--   expand_limits(x = 0) + -->
+<!--   scale_x_continuous( -->
+<!--     expand = expand_scale(c(0, 0.05)), -->
+<!--     labels = scales::percent) + -->
+<!--   theme_bw() + -->
+<!--   labs(x = "Lines per episode", y = "Speaker",  -->
+<!--        title = "Lines spoken per episode appearing") -->
+<!-- ``` -->
+
+# TF-IDF
+
+## By person
+
+```{r}
+front_matter <- c(
+  "streamfriends",
+  "streamfriends.tv",
+  "friends_table",
+  "youtube.com",
+  "runbutton",
+  "runbutton.net",
+  "austin_walker",
+  "ali_west", 
+  "bleatingheart",
+  "carberry",
+  "keithjcarberry",
+  "contentburger.biz",
+  "drevilbones",
+  "nickscrat.ch",
+  "notquitereal",
+  "notquitereal.bandcamp.com",
+  "featured",
+  "comicmix.com",
+  "atebbel",
+  "onesongpod",
+  "captaintrash",
+  "swandre3000",
+  "alicia",
+  "acampora",
+  "emojidrome", 
+  "videogamechoochoo.com",
+  "andrewleeswan"
+)
+```
+
+```{r}
+tf_idf <- dat %>%
+  mutate(
+    text = str_replace_all(
+      text,
+      c("[Mm]ee [Kk]osh" = "mee_kosh",
+        "[Gg]rand [Mm]ag " = "grand_magnificent",
+        "[Gg]rand [Mm]agnificent" = "grand_magnificent",
+        "[Jj]oan-[Bb]ee" = "Joan_Bee"))) %>%
+  unnest_tokens(term, text) %>%
+  # Remove front-matter and "da" (from Jack singing)
+  filter(! term %in% front_matter & term != "da") %>%
+  mutate(term = str_replace_all(
+    term, 
+    c("['’]s$" = "",
+      "phantasmo" = "fantasmo"))) %>%
+  count(speaker, term) %>%
+  bind_tf_idf(term, speaker, n)
+```
+
+```{r, fig.height = 20, fig.width = 6}
+plot_data <- tf_idf %>% 
+  group_by(speaker) %>% 
+  top_n(20, tf_idf) %>% 
+  ungroup()
+
+p <- list()
+for(i in unique(plot_data$speaker)){
+  p[[i]] <- plot_data %>%
+    filter(speaker == i) %>%
+    arrange(tf_idf) %>%
+    mutate(term = fct_inorder(term)) %>%
+    ggplot(aes(x = tf_idf, y = term)) + 
+    # facet_wrap(~ speaker) + 
+    geom_text(aes(label = term)) + 
+    theme_bw() +
+    scale_x_continuous(expand = expand_scale(c(0.25, 0.2))) +
+    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    labs(x = NULL, y = NULL) +
+    labs(title = i, x = "TF-IDF", y = "Term") +
+    theme(
+      plot.margin = unit(rep(0.2, 4), "in"))
+}
+
+gridExtra::grid.arrange(
+  grobs = p, ncol = 2,
+  top = "Most distinctive terms used, by person (further right implies more distinctive)"#,
+  # bottom = "Term Frequency - Inverse-Document Frequency",
+  # left = "Term"
+)
+```
+
+## By season
+
+```{r}
+tf_idf <- dat %>% 
+  arrange(season_number) %>%
+  mutate(
+    season = fct_inorder(season),
+    text = str_replace_all(
+      text,
+      c("uklan tel" = "uklan_tel"))) %>%
+  unnest_tokens(term, text) %>%
+  # Remove front-matter and "da" (from Jack singing)
+  filter(! term %in% front_matter & term != "da") %>%
+  mutate(term = str_replace_all(
+    term, 
+    c("['’]s$" = "",
+      "phantasmo" = "fantasmo"))) %>%
+  count(season, term) %>%
+  bind_tf_idf(term, season, n)
+```
+
+```{r, fig.height = 12, fig.width = 6}
+plot_data <- tf_idf %>% 
+  group_by(season) %>% 
+  top_n(20, tf_idf) %>% 
+  ungroup()
+
+p <- list()
+for(i in unique(plot_data$season)){
+  p[[i]] <- plot_data %>%
+    filter(season == i) %>%
+    arrange(tf_idf) %>%
+    mutate(term = fct_inorder(term)) %>%
+    ggplot(aes(x = tf_idf, y = term)) + 
+    # facet_wrap(~ speaker) + 
+    geom_text(aes(label = term)) + 
+    theme_bw() +
+    scale_x_continuous(expand = expand_scale(c(0.2, 0.2))) +
+    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    labs(x = NULL, y = NULL) +
+    labs(title = i, x = "TF-IDF", y = "Term") +
+    theme(
+      plot.margin = unit(rep(0.2, 4), "in"))
+}
+
+gridExtra::grid.arrange(
+  grobs = p, ncol = 2,
+  top = "Most distinctive terms used, by season (further right implies more distinctive)"#,
+  # bottom = "Term Frequency - Inverse-Document Frequency",
+  # left = "Term"
+)
+```
+
+### Run for Marielda only
+
+```{r}
+tf_idf <- dat %>% 
+  filter(str_detect(season, "Hieron")) %>%
+  arrange(season_number) %>%
+  mutate(
+    season = fct_inorder(season),
+    text = str_replace_all(
+      text,
+      c("uklan tel" = "uklan_tel"))) %>%
+  unnest_tokens(term, text) %>%
+  # Remove front-matter and "da" (from Jack singing)
+  filter(! term %in% front_matter & term != "da") %>%
+  mutate(term = str_replace_all(
+    term, 
+    c("['’]s$" = "",
+      "phantasmo" = "fantasmo"))) %>%
+  count(season, term) %>%
+  bind_tf_idf(term, season, n)
+```
+
+```{r, fig.height = 5, fig.width = 9}
+plot_data <- tf_idf %>% 
+  group_by(season) %>% 
+  top_n(20, tf_idf) %>% 
+  ungroup()
+
+p <- list()
+for(i in unique(plot_data$season)){
+  p[[i]] <- plot_data %>%
+    filter(season == i) %>%
+    arrange(tf_idf) %>%
+    mutate(term = fct_inorder(term)) %>%
+    ggplot(aes(x = tf_idf, y = term)) + 
+    # facet_wrap(~ speaker) + 
+    geom_text(aes(label = term)) + 
+    theme_bw() +
+    scale_x_continuous(expand = expand_scale(c(0.2, 0.2))) +
+    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    labs(x = NULL, y = NULL) +
+    labs(title = i, x = "TF-IDF", y = "Term") +
+    theme(
+      plot.margin = unit(rep(0.2, 4), "in"))
+}
+
+gridExtra::grid.arrange(
+  grobs = p, ncol = 3,
+  top = "Most distinctive terms used, by season (further right implies more distinctive)"#,
+  # bottom = "Term Frequency - Inverse-Document Frequency",
+  # left = "Term"
+)
+```
+
