@@ -1,7 +1,7 @@
 Friends at the Table Transcript Analysis
 ================
 Nathaniel Olin
-Sun May 26 15:55:06 2019
+Sun May 26 16:03:27 2019
 
 <!-- ```{r} -->
 <!-- dat %>% -->
@@ -66,6 +66,7 @@ By season
 
 ![](04_analyze_transcripts_files/figure-markdown_github/unnamed-chunk-5-1.png)
 
-### Run for Marielda only
+By season, Hieron only
+----------------------
 
 ![](04_analyze_transcripts_files/figure-markdown_github/unnamed-chunk-7-1.png)
