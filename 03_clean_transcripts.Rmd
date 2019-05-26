@@ -81,6 +81,19 @@ dat_line <- bind_rows(dat$text, .id = "filename") %>%
   filter(! str_detect(raw, "^ *$"))
 ```
 
+Remove "as ...): " pattern which indicates who the speaker is impersonating (the leading paren is removed by the regex above)
+
+```{r}
+dat_line <- dat_line %>%
+  mutate(
+    # character = if_else(
+    #   str_detect(text, "^as .*\\): "),
+    #   str_replace_all(text, "(^as )(.*?)( |\\):)(.*)", "\\2"),
+    #   as.character(NA)),
+    text = str_replace_all(text, "^as .*\\): ", ""))
+```
+
+
 ## Real speakers
 
 ```{r}

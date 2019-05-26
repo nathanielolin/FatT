@@ -1,7 +1,7 @@
 Clean transcripts
 ================
 Nathaniel Olin
-Sun May 26 11:55:21 2019
+Sun May 26 14:21:43 2019
 
 ``` r
 library(tidyverse)
@@ -136,6 +136,18 @@ dat_line <- bind_rows(dat$text, .id = "filename") %>%
   filter(! str_detect(raw, "^\\(*[0-9]: *[0-9]{2}[:.][0-9]{2}\\)*")) %>%
   # Remove blank rows
   filter(! str_detect(raw, "^ *$"))
+```
+
+Remove "as ...): " pattern which indicates who the speaker is impersonating (the leading paren is removed by the regex above)
+
+``` r
+dat_line <- dat_line %>%
+  mutate(
+    # character = if_else(
+    #   str_detect(text, "^as .*\\): "),
+    #   str_replace_all(text, "(^as )(.*?)( |\\):)(.*)", "\\2"),
+    #   as.character(NA)),
+    text = str_replace_all(text, "^as .*\\): ", ""))
 ```
 
 Real speakers
