@@ -29,7 +29,7 @@ dat <- read_csv("meta.csv")
 
 ```{r scrape}
 # Remove locked file
-dat$url[dat$url == "https://drive.google.com/open?id=19CSVitxMRtKKXr8m4swuczgAHtwcTT6sEEZaxSzQpgI"] <- NA
+# dat$url[dat$url == "https://drive.google.com/open?id=19CSVitxMRtKKXr8m4swuczgAHtwcTT6sEEZaxSzQpgI"] <- NA
     
 for(i in seq_along(dat$url)){
   if(! dat$filename[i] %in% list.files("transcripts") & !is.na(dat$url[i]))

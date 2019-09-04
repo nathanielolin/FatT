@@ -21,13 +21,16 @@ dat <- as_id("17P0ijdfHppGEkiq0zyMbJNVQrLAwRs9WhkDqA-dkBkk") %>%
   read_sheet(sheet = "Completed episode list")
 
 # Check consistent format of dataframe
-stopifnot(ncol(dat) == 7)
+stopifnot(names(dat) == c(
+  "...1", "minutes", "transcriber", 
+  "...4", "...5", "link to transcript",
+  "...7", "...8", "...9"))
 ```
 
 # Clean up list
 
 ```{r clean-list}
-names(dat) <- c("episode_name", "minutes", "transcriber", "started", "complete", "url", "notes")
+names(dat) <- c("episode_name", "minutes", "transcriber", "started", "complete", "url", "notes", "X8", "X9")
 # Drop blank row and columns not used in analysis
 dat <- dat %>% 
   filter(!is.na(episode_name)) %>%
@@ -55,6 +58,13 @@ dat <- dat %>%
     "Autumn in Hieron", "COUNTER/Weight", 
     "Marielda", "Winter in Hieron", 
     "Twilight Mirage", "Spring in Hieron"))
+
+# Remove post-mortems
+dat %>% 
+  filter(str_detect(episode_name, "[Mm]ortem")) %>% 
+  select(episode_name)
+
+dat <- dat %>% filter(! str_detect(episode_name, "[Mm]ortem"))
 
 dat %>% count(season)
 ```
