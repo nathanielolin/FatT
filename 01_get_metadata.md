@@ -1,168 +1,244 @@
 Get FatT transcript metadata
 ================
 Nathaniel Olin
-Tue Sep 03 20:53:13 2019
+Mon Feb 08 10:36:42 2021
 
 ``` r
 library(tidyverse)
 ```
 
-    ## Registered S3 methods overwritten by 'ggplot2':
-    ##   method         from 
-    ##   [.quosures     rlang
-    ##   c.quosures     rlang
-    ##   print.quosures rlang
+    ## -- Attaching packages --------------------------------------- tidyverse 1.3.0 --
 
-    ## -- Attaching packages ----------------------------------------------- tidyverse 1.2.1 --
+    ## v ggplot2 3.3.3     v purrr   0.3.4
+    ## v tibble  3.0.6     v dplyr   1.0.3
+    ## v tidyr   1.1.2     v stringr 1.4.0
+    ## v readr   1.4.0     v forcats 0.5.1
 
-    ## v ggplot2 3.1.1     v purrr   0.3.2
-    ## v tibble  2.1.2     v dplyr   0.8.1
-    ## v tidyr   0.8.3     v stringr 1.4.0
-    ## v readr   1.3.1     v forcats 0.4.0
-
-    ## -- Conflicts -------------------------------------------------- tidyverse_conflicts() --
+    ## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
 ``` r
-library(googledrive)
 library(googlesheets4)
-sheets_auth(email = Sys.getenv("email"))
 ```
 
 # Get list of episodes
 
 ``` r
-dat <- as_id("17P0ijdfHppGEkiq0zyMbJNVQrLAwRs9WhkDqA-dkBkk") %>%
-  read_sheet(sheet = "Completed episode list")
+gs4_deauth() # Public sheet does not require auth
+
+seasons <- list(
+  "Autumn in Hieron",
+  "Marielda",
+  "Winter in Hieron",
+  "Spring in Hieron",
+  "COUNTER/Weight",
+  "Twilight Mirage",
+  "Road to PARTIZAN",
+  "PARTIZAN"
+)
+
+dat <- lapply(
+  seasons,
+  function(x)
+    read_sheet(
+      "1KZHwlSBvHtWStN4vTxOTrpv4Dp9WQrulwMCRocXeYcQ",
+      sheet = x
+    )
+)
 ```
 
-    ## Reading from 'FATT TRANSCRIPTS'
+    ## Reading from "FatT Completed Transcripts"
 
-    ## Range "'Completed episode list'"
+    ## Range "'Autumn in Hieron'"
 
-    ## New names:
-    ## * `` -> ...1
-    ## * `` -> ...4
-    ## * `` -> ...5
-    ## * `` -> ...7
-    ## * `` -> ...8
-    ## * ... and 1 more problem
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'Marielda'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'Winter in Hieron'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'Spring in Hieron'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'COUNTER/Weight'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'Twilight Mirage'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'Road to PARTIZAN'"
+
+    ## Reading from "FatT Completed Transcripts"
+
+    ## Range "'PARTIZAN'"
 
 ``` r
+# Stack sheets
+names(dat) <- seasons
+dat <- bind_rows(dat, .id = "season")
+dat <- janitor::clean_names(dat)
+
 # Check consistent format of dataframe
-stopifnot(names(dat) == c(
-  "...1", "minutes", "transcriber", 
-  "...4", "...5", "link to transcript",
-  "...7", "...8", "...9"))
+stopifnot(names(dat) == c("season", "episode", "complete", "doc"))
+dat$complete <- dat$complete == "Yes" & !is.na(dat$complete)
 ```
 
-# Clean up list
+# Clean List
 
 ``` r
-names(dat) <- c("episode_name", "minutes", "transcriber", "started", "complete", "url", "notes", "X8", "X9")
-# Drop blank row and columns not used in analysis
-dat <- dat %>% 
-  filter(!is.na(episode_name)) %>%
-  select(episode_name, minutes, url) %>%
-  mutate(episode_name = str_replace_all(episode_name, "â€™", "'"))
+remove_print <- function(d, remove) {
+  d %>% 
+    filter(str_detect(episode, remove)) %>% 
+    select(episode) %>% 
+    print(n = Inf)
+  d %>% filter(! str_detect(episode, remove))
+}
 
-dat
+dat <- remove_print(dat, "[Mm]ortem")
 ```
 
-    ## # A tibble: 253 x 3
-    ##    episode_name                     minutes url                            
-    ##    <chr>                              <dbl> <chr>                          
-    ##  1 An Introduction to Friends at t~      13 https://drive.google.com/open?~
-    ##  2 Autumn in Hieron 00: We're Not ~     176 https://drive.google.com/open?~
-    ##  3 Autumn in Hieron 01: We Have No~      85 https://drive.google.com/open?~
-    ##  4 Autumn in Hieron 02: You Found ~     110 https://drive.google.com/open?~
-    ##  5 Autumn in Hieron 03: A Podcast ~      87 https://drive.google.com/open?~
-    ##  6 Autumn in Hieron 04: Is It Time~     145 https://drive.google.com/open?~
-    ##  7 Autumn in Hieron 05: What's a G~      94 https://drive.google.com/open?~
-    ##  8 Autumn in Hieron 06: A Bad Trip      102 https://drive.google.com/open?~
-    ##  9 Autumn in Hieron 08: On The Tip~      98 https://drive.google.com/open?~
-    ## 10 Autumn in Hieron 09: I'm Not Ha~      87 https://drive.google.com/open?~
-    ## # ... with 243 more rows
-
-# Code additional metadata
-
-## Code season names
-
-``` r
-dat <- dat %>%
-  mutate(season = str_replace_all(
-    episode_name, "^(.*?)( [0-9-]*):.*", "\\1"))
-
-# Fix unnumbered episode
-dat$season[dat$season == "Autumn in Hieron: Holiday Special"] <- "Autumn in Hieron"
-
-# Stick to main seasons
-dat <- dat %>%
-  filter(season %in% c(
-    "Autumn in Hieron", "COUNTER/Weight", 
-    "Marielda", "Winter in Hieron", 
-    "Twilight Mirage", "Spring in Hieron"))
-
-# Remove post-mortems
-dat %>% 
-  filter(str_detect(episode_name, "[Mm]ortem")) %>% 
-  select(episode_name)
-```
-
-    ## # A tibble: 3 x 1
-    ##   episode_name                                       
+    ## # A tibble: 6 x 1
+    ##   episode                                            
     ##   <chr>                                              
     ## 1 Autumn in Hieron 29: Live Post Mortem              
-    ## 2 COUNTER/Weight 44: Live Post-Mortem                
-    ## 3 Twilight Mirage 68: The Twilight Mirage Post Mortem
+    ## 2 Winter in Hieron & Marielda Post Mortem            
+    ## 3 Spring in Hieron Post Mortem (Read the post!)      
+    ## 4 COUNTER/Weight 44: Live Post-Mortem                
+    ## 5 Twilight Mirage 68: The Twilight Mirage Post Mortem
+    ## 6 PARTIZAN 48: Post Mortem
 
 ``` r
-dat <- dat %>% filter(! str_detect(episode_name, "[Mm]ortem"))
-
-dat %>% count(season)
+dat <- remove_print(dat, "Bonus")
 ```
 
-    ## # A tibble: 6 x 2
-    ##   season               n
-    ##   <chr>            <int>
-    ## 1 Autumn in Hieron    26
-    ## 2 COUNTER/Weight      33
-    ## 3 Marielda            12
-    ## 4 Spring in Hieron    38
-    ## 5 Twilight Mirage     52
-    ## 6 Winter in Hieron    26
+    ## # A tibble: 1 x 1
+    ##   episode                                  
+    ##   <chr>                                    
+    ## 1 Bonus Episode: Sports Are Just Numerology
+
+``` r
+dat <- remove_print(dat, "Introduction|A Message From|A Quick Announcement")
+```
+
+    ## # A tibble: 4 x 1
+    ##   episode                                  
+    ##   <chr>                                    
+    ## 1 An Introduction to Friends at the Table  
+    ## 2 A Message From Austin                    
+    ## 3 A Message From Ali                       
+    ## 4 A Quick Announcement and Some Thank Yous!
+
+``` r
+dat <- remove_print(dat, "The Months of Autumn")
+```
+
+    ## # A tibble: 2 x 1
+    ##   episode                          
+    ##   <chr>                            
+    ## 1 Hieron: The Months of Autumn Pt 1
+    ## 2 Hieron: The Months of Autumn Pt 2
+
+``` r
+dat <- remove_print(dat, "Takin’ a Snow Day")
+```
+
+    ## # A tibble: 1 x 1
+    ##   episode          
+    ##   <chr>            
+    ## 1 Takin’ a Snow Day
+
+``` r
+dat <- remove_print(dat, "Patreon Announcement")
+```
+
+    ## # A tibble: 1 x 1
+    ##   episode                                  
+    ##   <chr>                                    
+    ## 1 Twilight Mirage and Patreon Announcement!
+
+``` r
+dat <- remove_print(dat, "Gen Con")
+```
+
+    ## # A tibble: 2 x 1
+    ##   episode                                                        
+    ##   <chr>                                                          
+    ## 1 Merch Available on Fangamer & Gen Con Tickets On Sale Sunday!!!
+    ## 2 Friends at the Table @ Gen Con this week!!
+
+``` r
+dat <- remove_print(dat, "Announcing: PARTIZAN")
+```
+
+    ## # A tibble: 1 x 1
+    ##   episode                                   
+    ##   <chr>                                     
+    ## 1 Announcing: PARTIZAN (And Some New Merch!)
 
 ## Code season numbers
 
 ``` r
 dat <- dat %>%
-  mutate(season_number = recode(
-    season,
-    "Autumn in Hieron" = 1,
-    "COUNTER/Weight" = 2,
-    "Marielda" = 2.5,
-    "Winter in Hieron" = 3,
-    "Twilight Mirage" = 4,
-    "Spring in Hieron" = 5))
+  mutate(
+    season_id = recode(
+      season,
+      "Autumn in Hieron" = 1,
+      "COUNTER/Weight" = 2,
+      "Marielda" = 2.5,
+      "Winter in Hieron" = 3,
+      "Twilight Mirage" = 4,
+      "Spring in Hieron" = 5,
+      "Road to PARTIZAN" = 5.5,
+      "PARTIZAN" = 6
+    )
+  )
 ```
 
 ## Code episode numbers
 
 ``` r
+# Consistent format
 dat <- dat %>%
-  mutate(episode_number = as.numeric(str_replace_all(
-    episode_name, "^(.*? )([0-9-]*):.*", "\\2")))
+  mutate(episode = if_else(
+    episode == "PARTIZAN 09 - DESERT SQUIRE - VANTAGE",
+    "PARTIZAN 09: DESERT SQUIRE - VANTAGE",
+    episode
+  ))
 
-dat$episode_number[str_detect(dat$episode_name, "Autumn in Hieron: Holiday Special")] <- NA
+
+dat <- dat %>%
+  mutate(
+    episode_id = as.numeric(str_replace_all(
+      episode, "^(.*? )([0-9-]*):.*", "\\2"))
+  )
+
+# Holiday episodes
+dat %>% filter(str_detect(episode, "Holiday"))
 ```
 
-## Code episode names
+    ## # A tibble: 4 x 6
+    ##   season   episode             complete doc                 season_id episode_id
+    ##   <chr>    <chr>               <lgl>    <chr>                   <dbl>      <dbl>
+    ## 1 Autumn ~ Autumn in Hieron: ~ FALSE    <NA>                        1          1
+    ## 2 Autumn ~ Autumn in Hieron: ~ TRUE     https://drive.goog~         1          2
+    ## 3 Winter ~ Winter in Hieron: ~ TRUE     https://drive.goog~         3          1
+    ## 4 Winter ~ Winter in Hieron: ~ TRUE     https://docs.googl~         3          2
 
 ``` r
 dat <- dat %>%
-  mutate(episode_name = str_replace_all(
-    episode_name, "^(.*? )([0-9-]*): (.*)", "\\3"))
+  mutate(episode_id = if_else(
+    str_detect(episode, "Holiday"),
+    as.numeric(NA),
+    episode_id
+  ))
 ```
 
 ## Code filename (for later)
@@ -170,34 +246,32 @@ dat <- dat %>%
 ``` r
 dat <- dat %>%
   mutate(filename = sprintf(
-    "%02.1f_%02.0f_%s.txt", 
-    season_number, 
-    episode_number, 
+    "%s.txt", 
     str_replace_all(
-      tolower(episode_name), 
-      pattern = c(" " = "_", "[:!?'(),.]" = ""))))
+      tolower(episode), 
+      pattern = c(" " = "_", "[:!?'’(),./]" = "", "\"" = ""))))
 ```
 
 # Write out
 
 ``` r
 dat %>%
-  select(filename, season_number, season, episode_number, episode_name, minutes, url) %>%
+  select(filename, season_id, season, episode_id, episode, doc, complete) %>%
   print() %>%
   write_csv("meta.csv")
 ```
 
-    ## # A tibble: 187 x 7
-    ##    filename  season_number season episode_number episode_name minutes url  
-    ##    <chr>             <dbl> <chr>           <dbl> <chr>          <dbl> <chr>
-    ##  1 1.0_00_w~             1 Autum~              0 We're Not C~     176 http~
-    ##  2 1.0_01_w~             1 Autum~              1 We Have Not~      85 http~
-    ##  3 1.0_02_y~             1 Autum~              2 You Found O~     110 http~
-    ##  4 1.0_03_a~             1 Autum~              3 A Podcast A~      87 http~
-    ##  5 1.0_04_i~             1 Autum~              4 Is It Time ~     145 http~
-    ##  6 1.0_05_w~             1 Autum~              5 What's a Go~      94 http~
-    ##  7 1.0_06_a~             1 Autum~              6 A Bad Trip       102 http~
-    ##  8 1.0_08_o~             1 Autum~              8 On The Tip ~      98 http~
-    ##  9 1.0_09_i~             1 Autum~              9 I'm Not Hap~      87 http~
-    ## 10 1.0_10_c~             1 Autum~             10 Chekhov's T~      56 http~
-    ## # ... with 177 more rows
+    ## # A tibble: 293 x 7
+    ##    filename       season_id season  episode_id episode      doc         complete
+    ##    <chr>              <dbl> <chr>        <dbl> <chr>        <chr>       <lgl>   
+    ##  1 autumn_in_hie~         1 Autumn~          0 Autumn in H~ https://dr~ TRUE    
+    ##  2 autumn_in_hie~         1 Autumn~          1 Autumn in H~ https://dr~ TRUE    
+    ##  3 autumn_in_hie~         1 Autumn~          2 Autumn in H~ https://dr~ TRUE    
+    ##  4 autumn_in_hie~         1 Autumn~          3 Autumn in H~ https://dr~ TRUE    
+    ##  5 autumn_in_hie~         1 Autumn~          4 Autumn in H~ https://dr~ TRUE    
+    ##  6 autumn_in_hie~         1 Autumn~          5 Autumn in H~ https://dr~ TRUE    
+    ##  7 autumn_in_hie~         1 Autumn~          6 Autumn in H~ https://dr~ TRUE    
+    ##  8 autumn_in_hie~         1 Autumn~          7 Autumn in H~ <NA>        FALSE   
+    ##  9 autumn_in_hie~         1 Autumn~          8 Autumn in H~ https://dr~ TRUE    
+    ## 10 autumn_in_hie~         1 Autumn~          9 Autumn in H~ https://dr~ TRUE    
+    ## # ... with 283 more rows

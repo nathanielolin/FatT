@@ -10,8 +10,7 @@ editor_options:
 ```{r setup}
 library(tidyverse)
 library(googledrive)
-library(googlesheets4)
-sheets_auth(email = Sys.getenv("email"))
+drive_deauth() # Public sheet does not require auth
 
 if(! "transcripts" %in% list.files())
   dir.create("transcripts")
@@ -22,18 +21,20 @@ if(! "transcripts" %in% list.files())
 ## Get episode URLs
 
 ```{r get-list}
-dat <- read_csv("meta.csv")
+dat <- read_csv("meta.csv") %>%
+  filter(complete)
 ```
 
 ## Save transcripts to file
 
 ```{r scrape}
-# Remove locked file
-# dat$url[dat$url == "https://drive.google.com/open?id=19CSVitxMRtKKXr8m4swuczgAHtwcTT6sEEZaxSzQpgI"] <- NA
-    
-for(i in seq_along(dat$url)){
-  if(! dat$filename[i] %in% list.files("transcripts") & !is.na(dat$url[i]))
-    drive_download(as_id(dat$url[i]), path = paste0("transcripts/", dat$filename[i]))
+for(i in seq_along(dat$doc)){
+  if(! dat$filename[i] %in% list.files("transcripts") & 
+     !is.na(dat$doc[i]))
+    drive_download(
+      as_id(dat$doc[i]), 
+      path = paste0("transcripts/", dat$filename[i])
+    )
 }
 ```
 
