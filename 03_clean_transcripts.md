@@ -1,127 +1,109 @@
 Clean transcripts
 ================
 Nathaniel Olin
-Sun May 26 14:44:30 2019
+Fri Feb 12 12:05:04 2021
 
 ``` r
 library(tidyverse)
 ```
 
-    ## Registered S3 methods overwritten by 'ggplot2':
-    ##   method         from 
-    ##   [.quosures     rlang
-    ##   c.quosures     rlang
-    ##   print.quosures rlang
+    ## -- Attaching packages --------------------------------------- tidyverse 1.3.0 --
 
-    ## Registered S3 method overwritten by 'rvest':
-    ##   method            from
-    ##   read_xml.response xml2
+    ## v ggplot2 3.3.3     v purrr   0.3.4
+    ## v tibble  3.0.6     v dplyr   1.0.3
+    ## v tidyr   1.1.2     v stringr 1.4.0
+    ## v readr   1.4.0     v forcats 0.5.1
 
-    ## -- Attaching packages ----------------------------------------------------------------------------- tidyverse 1.2.1 --
-
-    ## v ggplot2 3.1.0     v purrr   0.3.2
-    ## v tibble  2.1.1     v dplyr   0.7.8
-    ## v tidyr   0.8.2     v stringr 1.4.0
-    ## v readr   1.3.1     v forcats 0.3.0
-
-    ## -- Conflicts -------------------------------------------------------------------------------- tidyverse_conflicts() --
+    ## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
-Load data
-=========
+# Load data
 
-Metadata
---------
+## Metadata
 
 ``` r
 dat <- read_csv("meta.csv")
 ```
 
-    ## Parsed with column specification:
+    ## 
+    ## -- Column specification --------------------------------------------------------
     ## cols(
     ##   filename = col_character(),
-    ##   season_number = col_double(),
+    ##   season_id = col_double(),
     ##   season = col_character(),
-    ##   episode_number = col_double(),
-    ##   episode_name = col_character(),
-    ##   minutes = col_double(),
-    ##   url = col_character()
+    ##   episode_id = col_double(),
+    ##   episode = col_character(),
+    ##   doc = col_character(),
+    ##   complete = col_logical()
     ## )
 
 ``` r
 # Remove locked transcript
-dat <- dat %>%
-  filter(filename != "2.0_06_heres_your_bribe_tip.txt")
+# dat <- dat %>%
+#   filter(filename != "2.0_06_heres_your_bribe_tip.txt")
 ```
 
-Transcripts
------------
+## Transcripts
 
 ``` r
 dat <- dat %>%
+  filter(complete) %>%
   mutate(
     filename = file.path("transcripts", filename),
     raw_text = sapply(
       filename,
-      readLines, encoding = "UTF-8"))
+      readLines, encoding = "UTF-8")
+  )
 
 dat %>%
-  filter(season_number == 4 & episode_number == 1) %>%
+  filter(season_id == 4 & episode_id == 1) %>%
   select(raw_text) %>%
   unlist() %>%
   .[100:120] %>%
+  .[. != ""] %>%
   paste(collapse = "\n") %>%
   writeLines()
 ```
 
-    ## 
-    ## 
     ## AUSTIN: And then your jam, which is— so your group will be playing a group of secret agents/secret police/investigators for a group that is entrusted with protecting the remaining cities and ships of the Divine Fleet. But besides that, you also have some free time where you do other stuff. I think of your group as, not on reserve necessarily, but there's definitely a Power Rangers-y like, "Oh shit, we gotta go do a thing," but not every day. So your jam is what you do when you're not doing that. So what is Signet's jam?
-    ## 
-    ## 
     ## JANINE: Signet's jam is basically attending to her duties as part of the religion. Because she used to pilot a Divine and that Divine is one of the ones that's no longer around, people like her are kind of in short supply. So she's put out as sort of a figure, not a figure head, but just a thing that people can connect to the faith through, because there aren't that many points of connection left.
-    ## 
-    ## 
     ## AUSTIN: Right. We didn't mention what playbook it was by mistake.
-    ## 
-    ## 
     ## JANINE: Oops. She is the Onomastic.
-    ## 
-    ## 
     ## AUSTIN: Which is kind of like the thing you are, which is you are the last of a religious order, basically. 
-    ## 
-    ## 
     ## JANINE: Yes.
-    ## 
-    ## 
     ## AUSTIN: And the religious order in question that we figured out was that you are the last Excerpt from the sort of Divine that you had, is that what we ended up on?
 
-Clean transcripts
-=================
+# Clean transcripts
 
 Split text into groups:
 
-1.  whitespace or leading punctuation
-2.  Text until new punctuation or space
-3.  New punctuation or space and all following characters
+1.  Whitespace
+2.  Text until colon
+3.  All following characters
 
 ``` r
-split_pattern <- "^[ *().]*(.+?)[!?,: /\\[\\]().;—-]+(.*)"
+split_pattern <- "^ *(.+?): *(.*)"
 ```
 
-Turn raw text vector into dataframe with speaker, text, and raw (original text) columns
+Turn raw text vector into dataframe with speaker, text, and raw
+(original text) columns
 
 ``` r
 dat <- dat %>%
   mutate(text = lapply(
     raw_text, function(x){
-      tibble(line = 1:length(x),
-             speaker = toupper(str_replace_all(x, split_pattern, "\\1")),
-             text = str_replace_all(x, split_pattern, "\\2"),
-             raw = x) %>%
+      x <- str_replace(x, "^$", "\n")
+      x <- paste(x, collapse = "")
+      x <- unlist(strsplit(x, "\n"))
+      tibble(
+        line = 1:length(x),
+        speaker = toupper(str_replace_all(x, split_pattern, "\\1")),
+        text = str_replace_all(x, split_pattern, "\\2"),
+        raw = x) %>%
+        # Remove lines with blank speaker and blank text
         filter(! (speaker %in% c("", " ") & text %in% c("", " "))) %>%
-        filter(! str_detect(speaker, "^ *\\[")) %>%
+        # filter(! str_detect(speaker, "^ *\\[")) %>%
         mutate(speaker = if_else(text == raw, as.character(NA), speaker))
     }))
 ```
@@ -133,391 +115,313 @@ dat_line <- bind_rows(dat$text, .id = "filename") %>%
   # Remove rows without speaker / text
   filter(speaker != toupper(raw)) %>%
   # Remove timestamps
-  filter(! str_detect(raw, "^\\(*[0-9]: *[0-9]{2}[:.][0-9]{2}\\)*")) %>%
+  filter(! str_detect(raw, "[0-9]: *[0-9]{2}[:.][0-9]{2}")) %>%
+  filter(! str_detect(raw, "[0-9]+:[0-9]{2}")) %>%
+  filter(! str_detect(raw, "TIMESTAMP")) %>%
   # Remove blank rows
   filter(! str_detect(raw, "^ *$"))
 ```
 
-Remove "...): " pattern which indicates who the speaker is impersonating (the leading paren is removed by the regex above)
+Remove “(…):” pattern which indicates who the speaker is impersonating
 
 ``` r
 dat_line <- dat_line %>%
-  mutate(
-    # character = if_else(
-    #   str_detect(text, "^as .*\\): "),
-    #   str_replace_all(text, "(^as )(.*?)( |\\):)(.*)", "\\2"),
-    #   as.character(NA)),
-    text = str_replace_all(text, "^.*[):]+ *", ""))
+  mutate(speaker = str_remove(speaker, " +\\(.*\\)| +\\[.*\\]"))
 ```
 
-Real speakers
--------------
+## Real speakers
 
 ``` r
-speaker_recode <- list(
-  AUSTIN = c(
+fix_name <- function(col, x) str_detect(col, x) ~ x
+dat_line <- dat_line %>%
+  mutate(speaker = case_when(
+    fix_name(speaker, "AUSTIN"),
+    fix_name(speaker, "KEITH"),
+    fix_name(speaker, "JACK"),
+    fix_name(speaker, "ALI"),
+    fix_name(speaker, "ART"),
+    fix_name(speaker, "DRE"),
+    fix_name(speaker, "JANINE"),
+    fix_name(speaker, "SYLVIA"), 
+    fix_name(speaker, "NICK"),
+    TRUE ~ speaker
+  ))
+```
+
+``` r
+recode_speaker <- function(d, player, alias) {
+  alias <- paste(alias, collapse = "|")
+  d %>%
+    mutate(speaker = if_else(
+      str_detect(speaker, alias), 
+      player, 
+      speaker
+    ))
+}
+```
+
+``` r
+dat_line <- dat_line %>%
+  recode_speaker("KEITH", c("FERO", "MAKO", "GIG")) %>%
+  mutate(speaker = if_else(
+    speaker %in% c("KIETH", "KETH", "KETIH", "KETIH", "KEI"),
+    "KEITH", speaker)) %>%
+  recode_speaker("JACK", c(
+    "LEM", "AUDY", "HITCHCOCK", "ETHAN", 
+    "EDMUND", "FOURTEEN")) %>%
+  mutate(speaker = if_else(
+    speaker %in% c("JAC", "JAKC", "JAKE", "JCK"),
+    "JACK", speaker)) %>%
+  recode_speaker("ALI", c("HELLA", "ARIA", "CASTILLE", "TENDER", "BROUN")) %>%
+  mutate(speaker = if_else(
+    speaker %in% c("ADI", "AII", "AL", "ARI"),
+    "ALI", speaker)) %>%
+  recode_speaker("DRE", c("THRONDIR", "SIGE", "EVEN", "VALENCE")) %>%
+  mutate(speaker = if_else(speaker %in% c("DE"), "DRE", speaker)) %>%
+  recode_speaker("SYLVIA", c("AUBREY", "EPHRIM", "ECHO", "SYLVI", "SYLIVA")) %>%
+  mutate(speaker = if_else(
+    speaker %in% c("ANSDI", "SILVIA", "SYLVA", "SYVIA"), 
+    "SYLVIA", speaker)) %>%
+  recode_speaker("JANINE", c("ADAIRE", "SIGNET", "THISBE")) %>%
+  mutate(speaker = if_else(speaker %in% c("JAININE"), "JANINE", speaker)) %>%
+  recode_speaker("NICK", c("PHANTASMO", "FANTASMO")) %>%
+  recode_speaker("ART", c("HADRIAN", "CASS")) %>%
+  mutate(speaker = if_else(speaker %in% c("T", "ASRT", "RT"), "ART", speaker))
+```
+
+``` r
+# recode exact:
+dat_line <- dat_line %>%
+  mutate(speaker = if_else(
+    speaker %in% c(
+      "A", "AU", "AUS", "AUS.", "AUSIN", "AUTIN", "AUDTIN", 
+      "AUD", "AUSINT", "AUSITN", "AUST", "AUSTI"), 
+    "AUSTIN", 
+    speaker))
+# recode str_detect
+dat_line <- dat_line %>%
+  recode_speaker("AUSTIN", c(
     "SAMOL",
     "SAMOT",
+    "BLUE J",
     "SEVEREA",
     "TED",
+    "CASCARA",
     "ARRELL",
+    "CARLAY", 
     "MAELGWYN",
     "PRIMO",
     "RIX",
-    "MARYLAND",
-    "SNITCH",
+    "ARIN TILL",
     "JAZELLA",
+    "SNITCH",
     "SAMOTHES",
+    "MARYLAND",
     "MAXINE",
     "MARITIME",
     "UKLAN",
-    "EDMUND",
+    "PRETENSE",
     "REBECCA",
+    "LENNY",
     "VULTURE",
     "GALENICA",
+    "BURGLAR",
+    "FAUL",
     "TOWER",
     "BENJAMIN",
     "CELADOR",
     "CALLER",
     "CORAL",
-    "CASCARA",
+    "CADENT",
     "FENTIL",
-    "AUS",
+    "ISAAC",
+    "MAN",
+    "TAVIRA",
     "CORSICA",
     "HEDY",
     "SILAS",
+    "LARDWULF",
+    "SOL",
     "URRN",
+    "BLAKE",
     "IRIS",
     "PEG",
+    "AVORA",
     "ADELTON",
     "HIGHWATER",
-    "JACQUI",
-    "ORCHID",
-    "AL",
-    "EMMANUEL",
+    "ALYOSHA",
+    "SOL",
+    "GLORY",
     "SAM",
-    "ADDAX",
+    "WES",
+    "WYNTER",
+    "FENOLO",
+    "JESSET",
+    "DUKE",
+    "INVESTIGATOR",
+    "COREY",
     "ORTH",
     "ROSANA",
+    "THE GIRL",
     "WEAVER",
-    "ARR",
-    "CENE",
-    "DEMANI",
+    "BIRDS",
+    "ADDAX",
     "KODIAK",
+    "PORTO PORLO PINTA",
     "ROE",
+    "SHO",
+    "SOMEONE",
+    "AVAR",
+    "INN-KEEPER",
+    "CALHOUN",
+    "SPRINGE",
+    "ORDENNAN",
     "ADLETON",
-    "BALION",
     "BEN",
-    "CLANK",
-    "CRYSTAL",
-    "ECHO",
-    "IBEX",
-    "ICE",
+    "ICE LADY",
     "JAMIL",
     "KALL",
     "MORBASH",
-    "OORN",
-    "RED",
-    "VOLITION",
-    "ZHAN",
-    "JULIA",
-    "ABDICATOR",
-    "ALEXIS",
-    "ASTIN",
-    "AUST",
-    "AUSITN",
-    "AUSTI",
-    "AUSTINS",
-    "AUSTN",
-    "AUTIN",
-    "AXIOMS",
-    "BALLAD",
-    "BLACKFORD",
-    "BLAKE",
-    "BLUEBERRI",
-    "BRIGHTON",
-    "CAPTAIN",
-    "CHORUS",
-    "CHRISTOPHER",
-    "CLARINENTS",
-    "CLARINETS",
-    "CODA",
-    "CORRECTIVE",
-    "COWBOY",
-    "CURIOSITY",
-    "DETACHMENT",
-    "ELGASH",
-    "INDIANA",
-    "LIBERTY",
-    "LULAV",
-    "MASSALIA",
-    "MAYLAND",
-    "MOONLOCK",
-    "NATALIA",
-    "NATALYA",
-    "OBELDAY",
-    "PRIMARY",
-    "SENESCHAL'S",
-    "STORNRAS",
-    "TAMSIN",
-    "TANNER",
-    "THYRSUS",
-    "KATIE",
-    "JERRY",
-    "WALTZ",
-    "KADAKNATH",
-    "KADAKNATH'S",
-    "JORNE",
-    "JORAS",
-    "KARAS",
+    "OPENING NARRATION",
+    "ORCHID",
     "SMOLDER",
+    "THE KILLER",
+    "THE OGRE",
+    "ZAHN",
+    "ALEJANDRO",
+    "BLOOMING",
+    "ZHAN",
+    "MEE KOSH",
+    "OORN",
+    "RANDOM PERSON",
+    "RAPHOA",
+    "RYRIRA",
+    "SABEEHA",
+    "\\[SLIDE",
+    "ADELAIDE",
+    "GRAY",
+    "MOTION",
+    "RECEPTIONIST",
+    "RETAIL DRONE",
+    "RODENTS",
+    "SKELETON", # RIP
+    "UNNAMED TROOP PILOT",
+    "CHRISTOPHER",
+    "ELF",
+    "FESTER",
+    "JACQUI",
+    "MAYLAND",
+    "MOURNING BRIDE",
     "SUNDER",
-    "SHO",
-    "AMAYA",
-    # Hitchcock's friend = snitch nightly
-    "HITCHCOCK’S",
-    "AU",
-    "BLUE"
-  ),
-  KEITH = c(
-    "FERO", 
-    "MAKO",
-    "GIG",
-    "KETH",
-    "KEI",
-    "KETIH"
-  ),
-  JACK = c(
-    "HITCHCOCK",
-    "LEM",
-    "AUDY",
-    "ETHAN",
-    "LEMME",
-    "AUD",
-    "FOURTEEN",
-    "JACKK",
-    "JACK’S"
-  ),
-  ALI = c(
-    "HELA",
-    "HELLA",
-    "CASTILLE",
-    "ARIA",
-    "TENDER",
-    "ALII",
-    "ALIS",
-    "ARIANA"
-  ),
-  ART = c(
-    "HADRIAN",
-    "CASS",
-    "GRAND"
-  ),
-  ANDI = c(
-    "EPHRIM",
-    "AUBREY",
-    "ANDJ",
-    "ANID",
-    "JANDI",
-    "ANSDI"
-  ),
-  DRE = c(
-    "ANDREW",
-    "THRONDIR",
-    "SIGE",
-    "DERL"
-  ),
-  JANINE = c(
-    "ADAIRE",
-    "SIGNET",
-    "JANIN",
-    "JAINE"
-  ),
-  NICK = c(),
-  TRANSCRIBER = c(
-    "TRANSCRIPTION",
-    "TRANSCRIBER’S",
-    "TRANSCRIBERS"
-  )
-)
+    "THE PRINCEPT",
+    "ZEALOT SAYS",
+    "A LETTER FROM KENT BRIGHTON TO THE LINEAGE’S MATRIARCH, THE LADY LYME",
+    "AND ALL OF THIS IS WHY I HATE THAT OLD DEBATE",
+    "YOU HAVE SERVED ME WELL YET AGAIN, GRAND MARSHAL. YET I SENSE IN YOU SOMETHING SHAMEFUL"
+  ))
 ```
 
-Recode speakers
+Remove non-players
 
 ``` r
-for(i in seq_along(speaker_recode)){
-  dat_line$speaker[dat_line$speaker %in% speaker_recode[[i]]] <- names(speaker_recode)[i]
-}
-
-dat_line %>%
-  count(speaker, sort = T) %>%
-  select(speaker) %>%
-  unlist() %>% unname()
+dat_line <- dat_line %>%
+  filter(! str_detect(speaker, "\\[*MUSIC")) %>%
+  filter(! str_detect(
+    speaker, 
+    "HIERON|HEIRON|MARIELDA|TWILIGHT MIRAGE|COUNTER/WEIGHT|PARTIZAN|LIVE AT THE TABLE|TRANSCR")) %>%
+  filter(! speaker %in% c(
+    "__",
+    "[T/N",
+    "* NOTE",
+    "[A]NOTE FOR NEW LISTENERS",
+    "[A WHIRLWIND OF INSTRUCTIONS FROM EVERYONE ABOUT HOW THIS WORKS, INCLUDING",
+    "ALL",
+    "EVERYONE",
+    "[EVERYONE MAKES NOISES OF UNDERSTANDING, EG",
+    "[INTRO THEME",
+    "[BACKGROUND NOISE",
+    "(OVERLAPPED)",
+    "(OVERLAPPING)",
+    "??? ",
+    "[???]",
+    "[EVERYONE MAKES SURPRISED NOISES. EG",
+    "[UNKNOWN]",
+    "CW",
+    "________________[1] FELAN PARKER HTTPS",
+    "“TELL ME” LYRICS",
+    "FEATURING",
+    "PLEASE NOTE",
+    "ROBOT",
+    "ROBOT SYNTHESIZER VOICE",
+    "ROBOT VOICE",
+    "SEVERAL PEOPLE",
+    "SEVERAL PEOPLE IN UNISON"
+  ))
 ```
-
-    ##   [1] "AUSTIN"         "KEITH"          "JACK"           "ALI"           
-    ##   [5] "ART"            "DRE"            "ANDI"           "JANINE"        
-    ##   [9] "NICK"           "AND"            "SO"             "OVERLAPPED"    
-    ##  [13] "THE"            "TRANSCRIBER"    "BUT"            "AS"            
-    ##  [17] "I"              "OVERLAPPING"    "UM"             "YOU"           
-    ##  [21] "<U+FEFF>TWILIGHT" "IN"             "TRANSCRIBED"    "ALL"           
-    ##  [25] "00"             "LIKE"           "<U+FEFF>SPRING" "-"             
-    ##  [29] "<U+FEFF>COUNTER" "OKAY"           "LAUGHTER"       "<U+FEFF>AUTUMN"
-    ##  [33] "<U+FEFF>WINTER" "DA"             "EVERYONE"       "YEAH"          
-    ##  [37] "LAUGHING"       "MUSIC"          "IT"             "THIS"          
-    ##  [41] "THERE"          "IT’S"           "PAUSE"          "UH"            
-    ##  [45] "ALRIGHT"        "HE"             "I’M"            "WE"            
-    ##  [49] "WHICH"          "A"              "MAN"            "MISSPOKEN"     
-    ##  [53] "<U+FEFF>MARIELDA" "FOR"            "OH"             "THAT"          
-    ##  [57] "WAKING"         "OR"             "ON"             "SOMEONE"       
-    ##  [61] "THEY"           "AT"             "CROSSTALK"      "RECAP"         
-    ##  [65] "THAT’S"         "WHAT"           "IF"             "NOW"           
-    ##  [69] "TWO"            "\"I"            "BECAUSE"        "NO"            
-    ##  [73] "ONE"            "RIGHT"          "SHE"            "WHEN"          
-    ##  [77] "ANOMALY"        "IS"             "THERE'S"        "TO"            
-    ##  [81] "TURN"           "WRONG"          "“"              "ANYWAY"        
-    ##  [85] "DO"             "END"            "I’LL"           "THERE’S"       
-    ##  [89] "THEY’RE"        "TODAY"          "WES"            "AFTER"         
-    ##  [93] "ALSO"           "EVEN"           "FIRST"          "HERE’S"        
-    ##  [97] "HM"             "HOW"            "LET"            "LET’S"         
-    ## [101] "LOUD"           "MORE"           "THEN"           "TYPING"        
-    ## [105] "WELCOME"        "WHERE"          "WHO"            "—AND"          
-    ## [109] "—I"             "“I"             "AGAIN"          "AH"            
-    ## [113] "FINALLY"        "FOUR"           "HE’S"           "JUST"          
-    ## [117] "LET'S"          "MAYBE"          "OF"             "SEVERAL"       
-    ## [121] "SIMULTANEOUSLY" "THAT'S"         "THINGS"         "THOUGH"        
-    ## [125] "WE’RE"          "WHEEZING"       "YOUR"           "—IN"           
-    ## [129] "—YOU"           "\"A"            "\"DOCTOR"       "\"SO"          
-    ## [133] "\"THE"          "\"WHAT"         "{1"             "{LAUGHING"     
-    ## [137] "‘CAUSE"         "“AND"           "“OH"            "“WHEN"         
-    ## [141] "…"              "…AND"           "1"              "15"            
-    ## [145] "3"              "4"              "5"              "6"             
-    ## [149] "ANOTHER"        "CHUCKLING"      "COOL"           "DON’T"         
-    ## [153] "DOWN"           "EACH"           "EVERY"          "EVERYBODY"     
-    ## [157] "FUCK"           "I’VE"           "INSIDE"         "JOINING"       
-    ## [161] "LAUGHS"         "LIGHT"          "MY"             "NOT"           
-    ## [165] "OFF"            "OK"             "OPENING"        "OUR"           
-    ## [169] "POST"           "ROLL"           "SHE'S"          "SLIGHT"        
-    ## [173] "SNORTING"       "SNORTS"         "SOME"           "SOMETHING"     
-    ## [177] "SOUNDS"         "THEIR"          "THEME"          "THESE"         
-    ## [181] "VARIOUS"        "WAIT"           "WE’LL"          "WHAT’S"        
-    ## [185] "WHEREAS"        "WHO’S"          "WITH"           "YES"           
-    ## [189] "—AS"            "—BEEN"          "—GLOVE"         "—GOD"          
-    ## [193] "—IF"            "—JUMP"          "—NAME"          "—OR"           
-    ## [197] "—PERFORM"       "—POP"           "—READ"          "—SAYS"         
-    ## [201] "—SHE"           "—SHOOTING"      "—START"         "—TENDER"       
-    ## [205] "—THE"           "—TO"            "—TOO"           "—TURNED"       
-    ## [209] "—WHO"           "\"AND"          "\"AT"           "\"AW"          
-    ## [213] "\"BUT"          "\"CARGO"        "\"CENTRA"       "\"FOR"         
-    ## [217] "\"GODDAMMIT"    "\"IN"           "\"IT"           "\"IT'S"        
-    ## [221] "\"READY"        "\"SEVEN"        "\"THEN"         "\"THEY"        
-    ## [225] "\"THOSE"        "\"WE'LL"        "\"YOUR"         ":"             
-    ## [229] "?"              "{11"            "{16"            "{2"            
-    ## [233] "{26"            "{3"             "{33"            "{44"           
-    ## [237] "{48"            "{54"            "{58"            "{EPISODE"      
-    ## [241] "~"              "‘IN"            "’"              "“A"            
-    ## [245] "“BREAKFAST”"    "“CAN"           "“DOES"          "“I’VE"         
-    ## [249] "“IN"            "“INSTEAD"       "“IT’S"          "“JULIA"        
-    ## [253] "“LEMME"         "“OBJECTION"     "“OUR"           "“RIGHTEOUSNESS"
-    ## [257] "“SIX"           "“SUCH"          "“TELL"          "“TO"           
-    ## [261] "“WE’RE"         "“WHAT"          "“YO"            "“YOU"          
-    ## [265] "“YOUR"          "<U+200B>"       "<U+300C>S"      "<U+FEFF>`COUNTER"
-    ## [269] "…WATCHING"      "0"              "01"             "10"            
-    ## [273] "100%"           "11112"          "11895"          "13"            
-    ## [277] "17"             "2"              "20"             "25"            
-    ## [281] "26622"          "28"             "285"            "29"            
-    ## [285] "30"             "31"             "42"             "45"            
-    ## [289] "46…TOMB"        "47"             "53"             "7"             
-    ## [293] "8"              "822"            "98"             "ABOUT"         
-    ## [297] "ABOVE"          "ACTIVITY"       "ACTUALLY"       "ADDED"         
-    ## [301] "ALTAR"          "AMONG"          "AN"             "AND…"          
-    ## [305] "AND…LIKE"       "AND…YOU"        "ANGELS”"        "ANY"           
-    ## [309] "ANYBODY"        "ANYTHING"       "ARE"            "ART’S"         
-    ## [313] "ASKS"           "AUDIBLE"        "AWESOME"        "BASICALLY"     
-    ## [317] "BELL"           "BIG"            "BY"             "C’MON"         
-    ## [321] "CHANGED"        "CHUCKLES"       "CLOCK"          "CLOSING"       
-    ## [325] "CLOUDS"         "COME"           "COMING"         "COOKIE"        
-    ## [329] "CROWN"          "CW"             "DARK"           "DAY"           
-    ## [333] "DAYS"           "DE"             "DEALIN"         "DEAR"          
-    ## [337] "DID"            "DOES"           "DOESN'T"        "DUHDUH"        
-    ## [341] "EITHER"         "ENDING"         "EPISODE"        "EVERYONE'S"    
-    ## [345] "EVERYTHING"     "EXCEPT"         "EXTREMELY"      "FAIR"          
-    ## [349] "FAKE"           "FALLING"        "FEATURING"      "FELLOW"        
-    ## [353] "FESTER"         "FILLER"         "FIVE"           "FORGET"        
-    ## [357] "FRANK"          "FRANKLY"        "FROM"           "FRONTIER"      
-    ## [361] "FUNNY"          "FURTHER"        "FUTURE"         "GASP"          
-    ## [365] "GIFT"           "GIGGLES"        "GIVE"           "GO"            
-    ## [369] "GOD"            "GOOD"           "GRAY"           "GROUP"         
-    ## [373] "GUARANTEED"     "GUESS"          "HAVE…"          "HER"           
-    ## [377] "HERE"           "HIDDEN"         "HIS"            "HISSING"       
-    ## [381] "HOOWEE"         "HUH"            "I'LL"           "I'M"           
-    ## [385] "IMAGINE"        "INTO"           "INTRO"          "JA"            
-    ## [389] "JA'MY"          "JCK"            "JEWELRY"        "KEEP"          
-    ## [393] "KOBUS"          "KORRIN"         "LOADED"         "LONE"          
-    ## [397] "LONG"           "LONGER"         "LOOK"           "LOOKING"       
-    ## [401] "MARIELDA"       "MESSAGE"        "METHOD"         "MIRAGE"        
-    ## [405] "MMM"            "MONTHS"         "MOTHERFUCK"     "NEED"          
-    ## [409] "NEW"            "NEXT"           "NORMALLY"       "NOTE"          
-    ## [413] "O’HARE"         "OTHER"          "OUTRO"          "OVER"          
-    ## [417] "P"              "PAY"            "PEOPLE"         "POLY"          
-    ## [421] "POVERTY"        "PROBABLY"       "QUESTION"       "QUESTIONS"     
-    ## [425] "QUI"            "QUICK"          "QUIET"          "REAL"          
-    ## [429] "RECOVER"        "REPEATED"       "REVISED"        "ROOM"          
-    ## [433] "RT"             "SAYS"           "SCATTERED"      "SCRAP"         
-    ## [437] "SECOND"         "SET"            "SHAKES"         "SHE’D"         
-    ## [441] "SHE’S"          "SHRUGGING"      "SIGNET…I"       "SINCERELY"     
-    ## [445] "SITTING"        "SKEIN"          "SNICKERING"     "SNORT"         
-    ## [449] "SNOW"           "SO…"            "SO…LIKE…OKAY"   "SOFT"          
-    ## [453] "SOL"            "SOMETIME"       "SPACE"          "START"         
-    ## [457] "STEP"           "STORMS"         "SUCH"           "SYNOPSIS"      
-    ## [461] "TEASES"         "TECH"           "TECHNICALLY"    "TELL"          
-    ## [465] "TEMPORARY"      "THAN"           "THANK"          "THAT’S…"       
-    ## [469] "THAT…ADELAIDE"  "THEIRS"         "THEY'LL"        "THIRD"         
-    ## [473] "THIS…"          "THOSE"          "UGH"            "UH…702"        
-    ## [477] "UH…ALL"         "UH…AND"         "UH…WHO’S"       "UHH"           
-    ## [481] "UHHUH"          "UM…"            "UNBRAKED"       "UNDERSTAND"    
-    ## [485] "UNLESS"         "UNTIL"          "UP"             "URM"           
-    ## [489] "VELAS"          "VISCOUS"        "VISIONS"        "WALK"          
-    ## [493] "WANT"           "WAS"            "WATCHED"        "WATCHING"      
-    ## [497] "WE'LL"          "WE’VE"          "WELL"           "WHILE"         
-    ## [501] "WHOOPS"         "WHY"            "WILL"           "WITHOUT"       
-    ## [505] "WOOP"           "WREATHE"        "Y’ALL"          "YOU’VE"        
-    ## [509] "ZEBRAS"
 
 Remaining lines coded as speaker above
 
 ``` r
-dat_line$speaker[dat_line$line == 1] <- NA
-for(i in seq_along(dat_line$speaker)){
-  # If you're not on the list of "real" speakers
-  if(! dat_line$speaker[i] %in% names(speaker_recode) & dat_line$line[i] > 1){
-    # You're a carryover from the line above, and
-    dat_line$speaker[i] <- dat_line$speaker[i - 1]
-    # Your text should stay as written
-    dat_line$text[i] <- dat_line$raw[i]
-  }
-}
+# Confirm all first-line speakers are valid
+valid_speaker <- dat_line %>%
+  count(speaker) %>%
+  filter(n > 100) %>%
+  select(speaker) %>%
+  unlist()
 
+dat_line <- dat_line %>% 
+  group_by(filename) %>% 
+  mutate(first_line = line == min(line)) %>%
+  ungroup()
+
+dat_line %>% filter(first_line) %>% count(speaker)
+```
+
+    ## # A tibble: 9 x 2
+    ##   speaker     n
+    ## * <chr>   <int>
+    ## 1 ALI        12
+    ## 2 ART        25
+    ## 3 AUSTIN    137
+    ## 4 DRE         6
+    ## 5 JACK        2
+    ## 6 JANINE      4
+    ## 7 KEITH      15
+    ## 8 NICK        4
+    ## 9 SYLVIA      2
+
+``` r
+stopifnot(dat_line$speaker[dat_line$first_line] %in% valid_speaker)
+
+# Remove invalid
+dat_line$speaker[! dat_line$speaker %in% valid_speaker] <- NA
+  
+while(! all(dat_line$speaker %in% valid_speaker)){
+  # Replace with line above
+  invalid <- is.na(dat_line$speaker)
+  dat_line$speaker[invalid] <- dat_line$speaker[which(invalid) - 1]
+}
 dat_line %>% count(speaker)
 ```
 
-    ## # A tibble: 11 x 2
-    ##    speaker         n
-    ##    <chr>       <int>
-    ##  1 ALI         16124
-    ##  2 ANDI         8559
-    ##  3 ART         11997
-    ##  4 AUSTIN      79795
-    ##  5 DRE          8806
-    ##  6 JACK        19316
-    ##  7 JANINE       7349
-    ##  8 KEITH       21462
-    ##  9 NICK         2848
-    ## 10 TRANSCRIBER   108
-    ## 11 <NA>          196
+    ## # A tibble: 9 x 2
+    ##   speaker     n
+    ## * <chr>   <int>
+    ## 1 ALI     16862
+    ## 2 ART     14077
+    ## 3 AUSTIN  91649
+    ## 4 DRE     11053
+    ## 5 JACK    22125
+    ## 6 JANINE  10187
+    ## 7 KEITH   24082
+    ## 8 NICK     3000
+    ## 9 SYLVIA   9918
 
-Write out
-=========
+``` r
+rm(invalid)
+```
+
+# Write out
 
 ``` r
 dat_line %>%
@@ -525,17 +429,17 @@ dat_line %>%
   write_csv("line.csv")
 ```
 
-    ## # A tibble: 176,560 x 5
-    ##    filename            line speaker  text              raw                 
-    ##    <chr>              <int> <chr>    <chr>             <chr>               
-    ##  1 transcripts/1.0_0~     1 <NA>     We're Not Callin~ <U+FEFF>Autumn in Hieron 0~ 
-    ##  2 transcripts/1.0_0~     4 TRANSCR~ ""                Transcribers: Ethan~
-    ##  3 transcripts/1.0_0~     9 KEITH    "cross] Yeah, we~ "KEITH: [cross] Yea~
-    ##  4 transcripts/1.0_0~    12 ALI      "cross] Yeah. "   "ALI: [cross] Yeah.~
-    ##  5 transcripts/1.0_0~    15 NICK     "cross] Okay, ye~ "NICK: [cross] Okay~
-    ##  6 transcripts/1.0_0~    18 KEITH    "Everybody— "     "KEITH: Everybody— "
-    ##  7 transcripts/1.0_0~    21 AUSTIN   Whoa, whoa, whoa. AUSTIN: Whoa, whoa,~
-    ##  8 transcripts/1.0_0~    24 KEITH    Tell me when— Te~ KEITH: Tell me when~
-    ##  9 transcripts/1.0_0~    27 AUSTIN   Okay, I'm ready.  AUSTIN: Okay, I'm r~
-    ## 10 transcripts/1.0_0~    30 JACK     "I'm ready. "     "JACK: I'm ready. " 
-    ## # ... with 176,550 more rows
+    ## # A tibble: 202,953 x 6
+    ##    filename             line speaker text            raw              first_line
+    ##    <chr>               <int> <chr>   <chr>           <chr>            <lgl>     
+    ##  1 transcripts/autumn~     7 KEITH   "[cross] Yeah,~ "KEITH: [cross]~ TRUE      
+    ##  2 transcripts/autumn~     9 ALI     "[cross] Yeah.~ "ALI: [cross] Y~ FALSE     
+    ##  3 transcripts/autumn~    11 NICK    "[cross] Okay,~ "NICK: [cross] ~ FALSE     
+    ##  4 transcripts/autumn~    13 KEITH   "Everybody— "   "KEITH: Everybo~ FALSE     
+    ##  5 transcripts/autumn~    15 AUSTIN  "[cross] Whoa,~ "AUSTIN: [cross~ FALSE     
+    ##  6 transcripts/autumn~    17 KEITH   "[cross] Tell ~ "KEITH: [cross]~ FALSE     
+    ##  7 transcripts/autumn~    19 JACK    "I'm ready. "   "JACK: I'm read~ FALSE     
+    ##  8 transcripts/autumn~    21 NICK    "Ready."        "NICK: Ready."   FALSE     
+    ##  9 transcripts/autumn~    23 KEITH   "Are we ready?~ "KEITH: Are we ~ FALSE     
+    ## 10 transcripts/autumn~    27 AUSTIN  "Okay."         "AUSTIN: Okay."  FALSE     
+    ## # ... with 202,943 more rows

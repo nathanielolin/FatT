@@ -11,12 +11,7 @@ editor_options:
 library(tidyverse)
 library(tidytext)
 knitr::opts_chunk$set(echo = F, message = F, warning = F)
-dat <- read_csv("line.csv") %>%
-  filter(!is.na(speaker) & speaker != "TRANSCRIBER") %>%
-  filter(! filename %in% c(
-    "transcripts/2.0_37_visions_from_windows_or_the_last_time_the_bomb_dropped.txt",
-    "transcripts/4.0_63_guaranteed_events_or_an_accounting_of_the_time_when_we_built_the_machine.txt"
-  ))
+dat <- read_csv("line.csv")
 meta <- read_csv("meta.csv") %>%
   mutate(filename = file.path("transcripts", filename))
 dat <- left_join(meta, dat, by = "filename")
@@ -75,6 +70,19 @@ dat <- left_join(meta, dat, by = "filename")
 <!--        title = "Lines spoken per episode appearing") -->
 <!-- ``` -->
 
+```{r bigrams}
+dat <- dat %>%
+  mutate(
+    text = str_replace_all(
+      text,
+      c("[Mm]ee [Kk]osh" = "mee_kosh",
+        "[Gg]rand [Mm]ag " = "grand_magnificent",
+        "[Gg]rand [Mm]agnificent" = "grand_magnificent",
+        "[Jj]oan-[Bb]ee" = "joan_bee",
+        "[Gg]ur [Ss]evraq" = "gur_sevraq",
+        "[Mm]h-hmm" = "mm_hmm")))
+```
+
 # TF-IDF
 
 ## By person
@@ -97,7 +105,6 @@ front_matter <- c(
   "nickscrat.ch",
   "notquitereal",
   "notquitereal.bandcamp.com",
-  "featured",
   "comicmix.com",
   "atebbel",
   "onesongpod",
@@ -107,19 +114,13 @@ front_matter <- c(
   "acampora",
   "emojidrome", 
   "videogamechoochoo.com",
-  "andrewleeswan"
+  "andrewleeswan",
+  "featured"
 )
 ```
 
 ```{r}
 tf_idf <- dat %>%
-  mutate(
-    text = str_replace_all(
-      text,
-      c("[Mm]ee [Kk]osh" = "mee_kosh",
-        "[Gg]rand [Mm]ag " = "grand_magnificent",
-        "[Gg]rand [Mm]agnificent" = "grand_magnificent",
-        "[Jj]oan-[Bb]ee" = "Joan_Bee"))) %>%
   unnest_tokens(term, text) %>%
   # Remove front-matter and "da" (from Jack singing)
   filter(! term %in% front_matter & term != "da") %>%
@@ -147,8 +148,8 @@ for(i in unique(plot_data$speaker)){
     # facet_wrap(~ speaker) + 
     geom_text(aes(label = term)) + 
     theme_bw() +
-    scale_x_continuous(expand = expand_scale(c(0.25, 0.25))) +
-    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    scale_x_continuous(expand = expansion(c(0.25, 0.25))) +
+    scale_y_discrete(labels = function(x) "", expand = expansion(c(0.05, 0.05))) +
     labs(x = NULL, y = NULL) +
     labs(title = i, x = "TF-IDF", y = "Term") +
     theme(
@@ -167,12 +168,14 @@ gridExtra::grid.arrange(
 
 ```{r}
 tf_idf <- dat %>% 
-  arrange(season_number) %>%
+  arrange(season_id) %>%
   mutate(
     season = fct_inorder(season),
     text = str_replace_all(
       text,
-      c("uklan tel" = "uklan_tel"))) %>%
+      c("uklan tel" = "uklan_tel",
+        "[Mm]h-hmm" = "mm_hmm",
+        "[Mm]mhm" = "mm_hmm"))) %>%
   unnest_tokens(term, text) %>%
   # Remove front-matter and "da" (from Jack singing)
   filter(! term %in% front_matter & term != "da") %>%
@@ -184,7 +187,7 @@ tf_idf <- dat %>%
   bind_tf_idf(term, season, n)
 ```
 
-```{r, fig.height = 12, fig.width = 6}
+```{r, fig.height = 20, fig.width = 6}
 plot_data <- tf_idf %>% 
   group_by(season) %>% 
   top_n(20, tf_idf) %>% 
@@ -200,8 +203,8 @@ for(i in unique(plot_data$season)){
     # facet_wrap(~ speaker) + 
     geom_text(aes(label = term)) + 
     theme_bw() +
-    scale_x_continuous(expand = expand_scale(c(0.25, 0.25))) +
-    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    scale_x_continuous(expand = expansion(c(0.25, 0.25))) +
+    scale_y_discrete(labels = function(x) "", expand = expansion(c(0.05, 0.05))) +
     labs(x = NULL, y = NULL) +
     labs(title = i, x = "TF-IDF", y = "Term") +
     theme(
@@ -221,12 +224,8 @@ gridExtra::grid.arrange(
 ```{r}
 tf_idf <- dat %>% 
   filter(str_detect(season, "Hieron")) %>%
-  arrange(season_number) %>%
-  mutate(
-    season = fct_inorder(season),
-    text = str_replace_all(
-      text,
-      c("uklan tel" = "uklan_tel"))) %>%
+  arrange(season_id) %>%
+  mutate(season = fct_inorder(season)) %>%
   unnest_tokens(term, text) %>%
   # Remove front-matter and "da" (from Jack singing)
   filter(! term %in% front_matter & term != "da") %>%
@@ -254,8 +253,8 @@ for(i in unique(plot_data$season)){
     # facet_wrap(~ speaker) + 
     geom_text(aes(label = term)) + 
     theme_bw() +
-    scale_x_continuous(expand = expand_scale(c(0.25, 0.25))) +
-    scale_y_discrete(labels = function(x) "", expand = expand_scale(c(0.05, 0.05))) +
+    scale_x_continuous(expand = expansion(c(0.25, 0.25))) +
+    scale_y_discrete(labels = function(x) "", expand = expansion(c(0.05, 0.05))) +
     labs(x = NULL, y = NULL) +
     labs(title = i, x = "TF-IDF", y = "Term") +
     theme(
@@ -270,3 +269,53 @@ gridExtra::grid.arrange(
 )
 ```
 
+## By season, Divine universe only
+
+```{r}
+tf_idf <- dat %>% 
+  filter(season_id %in% c(2, 4, 6)) %>%
+  arrange(season_id) %>%
+  mutate(season = fct_inorder(season)) %>%
+  unnest_tokens(term, text) %>%
+  # Remove front-matter and "da" (from Jack singing)
+  filter(! term %in% front_matter & term != "da") %>%
+  mutate(term = str_replace_all(
+    term, 
+    c("['’]s$" = "",
+      "phantasmo" = "fantasmo",
+      "[Cc]lementine" = "clem"))) %>%
+  count(season, term) %>%
+  bind_tf_idf(term, season, n)
+```
+
+```{r, fig.height = 5, fig.width = 9}
+plot_data <- tf_idf %>% 
+  group_by(season) %>% 
+  top_n(20, tf_idf) %>% 
+  ungroup()
+
+p <- list()
+for(i in unique(plot_data$season)){
+  p[[i]] <- plot_data %>%
+    filter(season == i) %>%
+    arrange(tf_idf) %>%
+    mutate(term = fct_inorder(term)) %>%
+    ggplot(aes(x = tf_idf, y = term)) + 
+    # facet_wrap(~ speaker) + 
+    geom_text(aes(label = term)) + 
+    theme_bw() +
+    scale_x_continuous(expand = expansion(c(0.25, 0.25))) +
+    scale_y_discrete(labels = function(x) "", expand = expansion(c(0.05, 0.05))) +
+    labs(x = NULL, y = NULL) +
+    labs(title = i, x = "TF-IDF", y = "Term") +
+    theme(
+      plot.margin = unit(rep(0.2, 4), "in"))
+}
+
+gridExtra::grid.arrange(
+  grobs = p, ncol = 3,
+  top = "Most distinctive terms used, by season (further right implies more distinctive)"#,
+  # bottom = "Term Frequency - Inverse-Document Frequency",
+  # left = "Term"
+)
+```

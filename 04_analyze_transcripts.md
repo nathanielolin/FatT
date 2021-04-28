@@ -1,7 +1,7 @@
 Friends at the Table Transcript Analysis
 ================
 Nathaniel Olin
-Sun May 26 16:03:27 2019
+Sat Feb 13 15:27:20 2021
 
 <!-- ```{r} -->
 <!-- dat %>% -->
@@ -53,20 +53,21 @@ Sun May 26 16:03:27 2019
 <!--   labs(x = "Lines per episode", y = "Speaker",  -->
 <!--        title = "Lines spoken per episode appearing") -->
 <!-- ``` -->
-TF-IDF
-======
 
-By person
----------
+# TF-IDF
 
-![](04_analyze_transcripts_files/figure-markdown_github/unnamed-chunk-3-1.png)
+## By person
 
-By season
----------
+![](04_analyze_transcripts_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-![](04_analyze_transcripts_files/figure-markdown_github/unnamed-chunk-5-1.png)
+## By season
 
-By season, Hieron only
-----------------------
+![](04_analyze_transcripts_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-![](04_analyze_transcripts_files/figure-markdown_github/unnamed-chunk-7-1.png)
+## By season, Hieron only
+
+![](04_analyze_transcripts_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+## By season, Divine universe only
+
+![](04_analyze_transcripts_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
